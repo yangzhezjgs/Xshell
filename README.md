@@ -2,7 +2,9 @@ a simple shell written in python
 
 原项目为：https://github.com/supasate/yosh
 </br>
-Xshell对原项目进行了重构（面向对象）和扩展（支持重定向，管道，&） 
+Xshell对原项目进行了重构（面向对象）和扩展（支持重定向，管道，&） <br/>
+演示可见为：<br/>
+http://blog.csdn.net/yz764127031/article/details/77587669<br/>
 
 ##
 支持Python版本：2.7 3.5以上 <br/>
