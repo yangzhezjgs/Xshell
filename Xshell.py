@@ -7,6 +7,10 @@ import signal
 import subprocess
 import platform
 from func import *
+import readline
+import rlcompleter
+readline.parse_and_bind('tab: complete')
+
 class Shell:
     def __init__(self):
         self.built_in_cmds = {}
@@ -27,7 +31,6 @@ class Shell:
             self.ignore_signals()
             try:
                 cmd = sys.stdin.readline()
-                print cmd
                 cmd_tokens = self.tokenize(cmd)
                 cmd_tokens = self.preprocess(cmd_tokens)
                 self.status = self.execute(cmd_tokens)
