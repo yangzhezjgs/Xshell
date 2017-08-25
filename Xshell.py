@@ -7,9 +7,6 @@ import signal
 import subprocess
 import platform
 from func import *
-import readline
-import rlcompleter
-readline.parse_and_bind('tab: complete')
 
 class Shell:
     def __init__(self):
