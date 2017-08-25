@@ -33,7 +33,7 @@ python  Xshell.py
 内置的exit指令可能会导致bug，原因暂时不明<br/>
 
 ##
-学习要点： 
+学习要点：<br/>
 （1）Python标准库常用模块sys,os,subprocess等的使用 <br/>
 （2）shell的原理 <br/>
 （3）重定向，管道的原理<br/>
