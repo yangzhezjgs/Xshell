@@ -1,17 +1,17 @@
 a simple shell written in python
 
 原项目为：https://github.com/supasate/yosh
-
+</br>
 Xshell对原项目进行了重构（面向对象）和扩展（支持重定向，管道，&） 
 
 ##
-支持Python版本：2.7 3.5以上 
-主要使用python标准库，不需要其他依赖
+支持Python版本：2.7 3.5以上 <br/>
+主要使用python标准库，不需要其他依赖<br/>
 
 ##
-支持功能： 
-（1）shell基本命令
-（3）内置命令 
+支持功能： <br/>
+（1）shell基本命令<br/>
+（3）内置命令 <br/>
 支持history,cd,getenv,exit四条内置命令
 （2）重定向 
 （3）管道 
