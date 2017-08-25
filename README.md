@@ -5,7 +5,15 @@ a simple shell written in python
 Xshell对原项目进行了重构（面向对象）和扩展（支持重定向，管道，&） <br/>
 演示可见为：<br/>
 http://blog.csdn.net/yz764127031/article/details/77587669<br/>
-
+##
+使用：
+<br/>
+```
+git clone https://github.com/yangzhezjgs/Xshell
+cd Xshell
+python  Xshell.py
+```
+<br/>
 ##
 支持Python版本：2.7 3.5以上 <br/>
 主要使用python标准库，不需要其他依赖<br/>
