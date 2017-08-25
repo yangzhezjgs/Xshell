@@ -4,10 +4,14 @@ import shlex
 import getpass
 import socket
 import signal
-import subprocess
 from subprocess import call
 import platform
 from func import *
+class Task:
+    def __init__(self):
+        self.args = []
+        self.type = ''
+
 
 class Shell:
     def __init__(self):
@@ -26,12 +30,12 @@ class Shell:
     def run(self):
         while self.status == SHELL_STATUS_RUN:
             self.display_cmd_prompt()
-            self.ignore_signals()
+            #self.ignore_signals()
             try:
                 cmd = sys.stdin.readline()
                 cmd_tokens = self.tokenize(cmd)
-                cmd_tokens = self.preprocess(cmd_tokens)
-                self.status = self.execute(cmd_tokens)
+                task = self.preprocess(cmd_tokens)
+                self.status = self.execute(task)
             except:
                 _, err, _ = sys.exc_info()
                 print(err)
@@ -60,50 +64,90 @@ class Shell:
 
     def preprocess(self,tokens):
         processed_token = []
+        task = Task()
         for token in tokens:
             if token.startswith('$'):
                 processed_token.append(os.getenv(token[1:]))
             else:
                 processed_token.append(token)
-        return processed_token
+        for x in processed_token:
+            if x  == '|':
+                task.type = 'PIPE'
+                i = x.index('|')
+                task.args.append(processed_token[0:i+1])
+                task.args.append(processed_token[i+2:])
+                print task.args
+                break
+            elif x in ['<','>','2<']:
+                task.type = 'RE'
+                task.args = processed_token
+                break
+            elif x == '&':
+                task.type = 'BACK'
+                task.args = processed_token
+                break
+            else:
+                task.type = 'NORMAL'
+        if task.type == 'NORMAL':
+                task.args = processed_token
+        return task
 
     def handler_kill(self,signum,frame):
         raise OSError("Killed!")
 
-    def execute(self,cmd_tokens):
+    def execute(self,task):
         fout = sys.stdout
         fin = sys.stdin
         ferr = sys.stderr
         with open(HISTORY_PATH, 'a') as history_file:
-            history_file.write(' '.join(cmd_tokens) + os.linesep)
-        if cmd_tokens:
-            cmd_name = cmd_tokens[0]
-            cmd_args = cmd_tokens[1:]
+            if task.type == 'PIPE':
+                history_file.write(' '.join(str(task.args[0])+'|'+str(task.args[1])) + os.linesep)
+            else:
+                history_file.write(' '.join(task.args) + os.linesep)
+        signal.signal(signal.SIGINT, self.handler_kill)
+        if task.type == 'NORMAL':
+            cmd_name = task.args[0]
+            cmd_args = task.args[1:]
             if cmd_name in self.built_in_cmds:
                 return self.built_in_cmds[cmd_name](cmd_args)
-            signal.signal(signal.SIGINT, self.handler_kill)
-            if '>' in cmd_args:
-                fout = open(cmd_args[cmd_args.index('>') + 1], 'w')
-                cmd_tokens.remove(cmd_args[cmd_args.index('>') + 1])
-                cmd_tokens.remove('>')
-            if '<' in cmd_args:
-                fin = open(cmd_args[cmd_args.index('<') + 1], 'w')
-                cmd_tokens.remove(cmd_args[cmd_args.index('<') + 1])
-                cmd_tokens.remove('<')
-            if '2>' in cmd_args:
-                fin = open(cmd_args[cmd_args.index('2>') + 1], 'w')
-                cmd_tokens.remove(cmd_args[cmd_args.index('2>') + 1])
-                cmd_tokens.remove('2>')
-            if '&' in cmd_args:
-                try:
-                    pid = os.fork()
-                except OSError, e:
-                    sys.exit(1)
-                if pid == 0:
-                    cmd_tokens.remove(cmd_tokens[-1])
-                    call(cmd_tokens, stdout = fout, stdin = fin, stderr = ferr)
             else:
-                call(cmd_tokens, stdout = fout, stdin = fin, stderr = ferr)
+                call(task.args, stdout = fout, stdin = fin, stderr = ferr)
+        elif task.type == 'RE':
+            if '>' in task.args:
+                fout = open(task.args[task.args.index('>') + 1], 'w')
+                task.args.remove(task.args[task.args.index('>') + 1])
+                task.args.remove('>')
+            if '<' in task.args:
+                fin = open(task.args[task.args.index('<') + 1], 'w')
+                task.argss.remove(task.args[task.args.index('<') + 1])
+                task.args.remove('<')
+            if '2>' in task.args:
+                fin = open(task.args[task.args.index('2>') + 1], 'w')
+                task.args.remove(task.args[task.args.index('2>') + 1])
+                task.args.remove('2>')
+            call(task.args, stdout = fout, stdin = fin, stderr = ferr)
+        elif task.type == 'BACK':
+            try:
+                pid = os.fork()
+            except OSError, e:
+                sys.exit(1)
+            if pid == 0:
+                task.args.remove(task.args[-1])
+                call(task.args, stdout = fout, stdin = fin, stderr = ferr)
+        elif task.type == 'PIPE':
+            pi = os.pipe()
+            pid = os.fork()
+            if pid:
+                os.close(pi[1])
+                call(task.args[1],stdin =pi[0],stdout=fout,stderr=ferr)
+                os.close(pi[0])
+                os.waitpid(-1,os.WNOHANG)
+                sys.exit(0)
+            else:
+                os.close(pi[0])
+                call(task.args[0],stdout =pi[1],stdin=fin,stderr=ferr)
+                os.close(pi[1])
+                sys.exit(0)
         return SHELL_STATUS_RUN
 
 if __name__ == "__main__":
