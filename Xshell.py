@@ -5,6 +5,7 @@ import getpass
 import socket
 import signal
 import subprocess
+from subprocess import call
 import platform
 from func import *
 
@@ -44,7 +45,7 @@ class Shell:
         if cwd == home_dir:
             base_dir = '~'
         if platform.system() != 'Windows':
-            sys.stdout.write("[\033[1;33m%s\033[0;0m@%s \033[1;36m%s\033[0;0m] $ " % (user,hostname, base_dir))
+            sys.stdout.write("[\033[1;34m%s\033[0;0m@%s \033[1;36m%s\033[0;0m] $ " % (user,hostname, base_dir))
         else:
             sys.stdout.write("[%s@%s %s]$ " % (user, hostname, base_dir))
         sys.stdout.flush()
@@ -70,6 +71,9 @@ class Shell:
         raise OSError("Killed!")
 
     def execute(self,cmd_tokens):
+        fout = sys.stdout
+        fin = sys.stdin
+        ferr = sys.stderr
         with open(HISTORY_PATH, 'a') as history_file:
             history_file.write(' '.join(cmd_tokens) + os.linesep)
         if cmd_tokens:
@@ -78,15 +82,29 @@ class Shell:
             if cmd_name in self.built_in_cmds:
                 return self.built_in_cmds[cmd_name](cmd_args)
             signal.signal(signal.SIGINT, self.handler_kill)
-            if platform.system() != "Windows":
-                p = subprocess.Popen(cmd_tokens)
-                p.communicate()
+            if '>' in cmd_args:
+                fout = open(cmd_args[cmd_args.index('>') + 1], 'w')
+                cmd_tokens.remove(cmd_args[cmd_args.index('>') + 1])
+                cmd_tokens.remove('>')
+            if '<' in cmd_args:
+                fin = open(cmd_args[cmd_args.index('<') + 1], 'w')
+                cmd_tokens.remove(cmd_args[cmd_args.index('<') + 1])
+                cmd_tokens.remove('<')
+            if '2>' in cmd_args:
+                fin = open(cmd_args[cmd_args.index('2>') + 1], 'w')
+                cmd_tokens.remove(cmd_args[cmd_args.index('2>') + 1])
+                cmd_tokens.remove('2>')
+            if '&' in cmd_args:
+                try:
+                    pid = os.fork()
+                except OSError, e:
+                    sys.exit(1)
+                if pid == 0:
+                    cmd_tokens.remove(cmd_tokens[-1])
+                    call(cmd_tokens, stdout = fout, stdin = fin, stderr = ferr)
             else:
-                command = ""
-                command = ' '.join(cmd_tokens)
-                os.system(command)
+                call(cmd_tokens, stdout = fout, stdin = fin, stderr = ferr)
         return SHELL_STATUS_RUN
-
 
 if __name__ == "__main__":
     shell = Shell()
