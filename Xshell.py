@@ -30,7 +30,7 @@ class Shell:
     def run(self):
         while self.status == SHELL_STATUS_RUN:
             self.display_cmd_prompt()
-            #self.ignore_signals()
+            self.ignore_signals()
             try:
                 cmd = sys.stdin.readline()
                 cmd_tokens = self.tokenize(cmd)
@@ -76,19 +76,16 @@ class Shell:
                 i = x.index('|')
                 task.args.append(processed_token[0:i+1])
                 task.args.append(processed_token[i+2:])
-                print task.args
                 break
             elif x in ['<','>','2<']:
                 task.type = 'RE'
-                task.args = processed_token
                 break
             elif x == '&':
                 task.type = 'BACK'
-                task.args = processed_token
                 break
             else:
                 task.type = 'NORMAL'
-        if task.type == 'NORMAL':
+        if task.type != 'PIPE':
                 task.args = processed_token
         return task
 
@@ -129,7 +126,7 @@ class Shell:
         elif task.type == 'BACK':
             try:
                 pid = os.fork()
-            except OSError, e:
+            except OSError:
                 sys.exit(1)
             if pid == 0:
                 task.args.remove(task.args[-1])
@@ -142,12 +139,10 @@ class Shell:
                 call(task.args[1],stdin =pi[0],stdout=fout,stderr=ferr)
                 os.close(pi[0])
                 os.waitpid(-1,os.WNOHANG)
-                sys.exit(0)
             else:
                 os.close(pi[0])
                 call(task.args[0],stdout =pi[1],stdin=fin,stderr=ferr)
                 os.close(pi[1])
-                sys.exit(0)
         return SHELL_STATUS_RUN
 
 if __name__ == "__main__":
