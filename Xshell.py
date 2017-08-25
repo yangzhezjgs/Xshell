@@ -115,7 +115,7 @@ class Shell:
                 task.args.remove(task.args[task.args.index('>') + 1])
                 task.args.remove('>')
             if '<' in task.args:
-                fin = open(task.args[task.args.index('<') + 1], 'w')
+                fin = open(task.args[task.args.index('<') + 1], 'r')
                 task.argss.remove(task.args[task.args.index('<') + 1])
                 task.args.remove('<')
             if '2>' in task.args:
