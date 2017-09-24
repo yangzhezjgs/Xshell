@@ -4,8 +4,16 @@ import shlex
 import getpass
 import socket
 import signal
-from subprocess import call
+from subprocess import *
 import platform
+
+from prompt_toolkit import prompt
+from prompt_toolkit.history import  FileHistory
+from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+from prompt_toolkit.contrib.completers import WordCompleter
+
+ShellCompleter = WordCompleter(['ls','cd','pwd','ps'],ignore_case=True)
+
 from func import *
 class Task:
     def __init__(self):
@@ -25,14 +33,16 @@ class Shell:
         self.register_command("cd", cd)
         self.register_command("exit", exit)
         self.register_command("getenv", getenv)
-        self.register_command("history", history)
 
     def run(self):
         while self.status == SHELL_STATUS_RUN:
-            self.display_cmd_prompt()
+            prompt_str = self.display_cmd_prompt()
             self.ignore_signals()
             try:
-                cmd = sys.stdin.readline()
+                cmd = prompt(prompt_str,
+                            history=FileHistory('./func/history.txt'),
+                            auto_suggest = AutoSuggestFromHistory(),
+                            completer=ShellCompleter,)
                 cmd_tokens = self.tokenize(cmd)
                 task = self.preprocess(cmd_tokens)
                 self.status = self.execute(task)
@@ -48,11 +58,8 @@ class Shell:
         home_dir = os.path.expanduser('~')
         if cwd == home_dir:
             base_dir = '~'
-        if platform.system() != 'Windows':
-            sys.stdout.write("[\033[1;34m%s\033[0;0m@%s \033[1;36m%s\033[0;0m] $ " % (user,hostname, base_dir))
-        else:
-            sys.stdout.write("[%s@%s %s]$ " % (user, hostname, base_dir))
-        sys.stdout.flush()
+        prompt = u"[%s@%s %s]$ " % (user, hostname, base_dir)
+        return prompt
 
     def ignore_signals(self):
         if platform.system() != "Windows":
@@ -96,11 +103,6 @@ class Shell:
         fout = sys.stdout
         fin = sys.stdin
         ferr = sys.stderr
-        with open(HISTORY_PATH, 'a') as history_file:
-            if task.type == 'PIPE':
-                history_file.write(' '.join(str(task.args[0])+'|'+str(task.args[1])) + os.linesep)
-            else:
-                history_file.write(' '.join(task.args) + os.linesep)
         signal.signal(signal.SIGINT, self.handler_kill)
         if task.type == 'NORMAL':
             cmd_name = task.args[0]
@@ -124,25 +126,12 @@ class Shell:
                 task.args.remove('2>')
             call(task.args, stdout = fout, stdin = fin, stderr = ferr)
         elif task.type == 'BACK':
-            try:
-                pid = os.fork()
-            except OSError:
-                sys.exit(1)
-            if pid == 0:
                 task.args.remove(task.args[-1])
-                call(task.args, stdout = fout, stdin = fin, stderr = ferr)
+                Popen(task.args, stdout = fout, stdin = fin, stderr = ferr)
         elif task.type == 'PIPE':
-            pi = os.pipe()
-            pid = os.fork()
-            if pid:
-                os.close(pi[1])
-                call(task.args[1],stdin =pi[0],stdout=fout,stderr=ferr)
-                os.close(pi[0])
-                os.waitpid(-1,os.WNOHANG)
-            else:
-                os.close(pi[0])
-                call(task.args[0],stdout =pi[1],stdin=fin,stderr=ferr)
-                os.close(pi[1])
+            p=Popen(task.args[0], bufsize=1024,stdin=PIPE,stdout=PIPE, close_fds=True)
+            fout = p.stdout
+            call(task.args[1],stdin=fout)
         return SHELL_STATUS_RUN
 
 if __name__ == "__main__":
