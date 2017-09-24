@@ -40,7 +40,7 @@ class Shell:
             self.ignore_signals()
             try:
                 cmd = prompt(prompt_str,
-                            history=FileHistory('./func/history.txt'),
+                            history=FileHistory('history.txt'),
                             auto_suggest = AutoSuggestFromHistory(),
                             completer=ShellCompleter,)
                 cmd_tokens = self.tokenize(cmd)
